@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-playlist}
+      POSTGRES_USER: ${POSTGRES_USER:-playlist}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-playlist}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    image: migrate/migrate:v4.18.3
+    profiles: ["tools"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/migrations:ro
+    command:
+      - -path
+      - /migrations
+      - -database
+      - postgres://${POSTGRES_USER:-playlist}:${POSTGRES_PASSWORD:-playlist}@postgres:5432/${POSTGRES_DB:-playlist}?sslmode=disable
+      - up
+
+volumes:
+  postgres_data:
