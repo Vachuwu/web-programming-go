@@ -1,0 +1,154 @@
+openapi: 3.1.0
+info:
+  title: Shared Playlist API
+  version: 1.0.0
+  description: One shared playlist backed by PostgreSQL. SSE is best-effort; fetch GET /playlist after notifications.
+servers:
+  - url: http://localhost:8080
+paths:
+  /users:
+    post:
+      summary: Create a user
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateUserRequest'}, example: {name: Max}}}
+      responses:
+        '201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/User'}}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /playlist:
+    get:
+      summary: Get current playing item, ordered queue, and playback version
+      responses:
+        '200': {description: Playlist snapshot, content: {application/json: {schema: {$ref: '#/components/schemas/PlaylistSnapshot'}}}}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /playlist/items:
+    post:
+      summary: Add a queued track
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateItemRequest'}, example: {userId: 1, title: The Pot, artist: Tool, url: https://example.com/song}}}
+      responses:
+        '201': {description: Queued item, content: {application/json: {schema: {$ref: '#/components/schemas/PlaylistItem'}}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '404': {$ref: '#/components/responses/UserNotFound'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /playlist/items/{id}:
+    delete:
+      summary: Soft-delete a queued track added by this user
+      parameters: [{$ref: '#/components/parameters/ItemID'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UserReference'}}}}
+      responses:
+        '200': {description: Removed item, content: {application/json: {schema: {$ref: '#/components/schemas/PlaylistItem'}}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '403': {$ref: '#/components/responses/AccessDenied'}
+        '404': {$ref: '#/components/responses/ItemNotFound'}
+        '409': {$ref: '#/components/responses/ItemNotQueued'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /playlist/items/{id}/vote:
+    post:
+      summary: Create or replace this user's vote (-1 or 1)
+      parameters: [{$ref: '#/components/parameters/ItemID'}]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/VoteRequest'}, example: {userId: 1, value: 1}}}}
+      responses:
+        '200': {description: Current vote aggregate, content: {application/json: {schema: {$ref: '#/components/schemas/VoteResult'}}}}
+        '400': {$ref: '#/components/responses/InvalidVote'}
+        '404': {$ref: '#/components/responses/ItemNotFound'}
+        '409': {$ref: '#/components/responses/ItemNotQueued'}
+        '500': {$ref: '#/components/responses/InternalError'}
+    delete:
+      summary: Remove this user's vote; an absent vote is a successful no-op
+      parameters:
+        - {$ref: '#/components/parameters/ItemID'}
+        - name: userId
+          in: query
+          required: true
+          schema: {type: integer, format: int64, minimum: 1}
+      responses:
+        '200': {description: Current vote aggregate, content: {application/json: {schema: {$ref: '#/components/schemas/VoteResult'}}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '404': {$ref: '#/components/responses/ItemNotFound'}
+        '409': {$ref: '#/components/responses/ItemNotQueued'}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /playlist/play:
+    post:
+      summary: Start the highest-ranked queued item
+      requestBody: {$ref: '#/components/requestBodies/PlaybackRequest'}
+      responses:
+        '200': {description: Updated snapshot, content: {application/json: {schema: {$ref: '#/components/schemas/PlaylistSnapshot'}}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '409': {description: VERSION_CONFLICT, ALREADY_PLAYING, or PLAYLIST_EMPTY, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /playlist/next:
+    post:
+      summary: Complete the playing item and start the next one when available
+      requestBody: {$ref: '#/components/requestBodies/PlaybackRequest'}
+      responses:
+        '200': {description: Updated snapshot, content: {application/json: {schema: {$ref: '#/components/schemas/PlaylistSnapshot'}}}}
+        '400': {$ref: '#/components/responses/InvalidRequest'}
+        '409': {description: VERSION_CONFLICT or NOTHING_PLAYING, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /playlist/history:
+    get:
+      summary: List completed items ordered by completion time descending
+      responses:
+        '200': {description: Played items, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/PlaylistItem'}}}}}
+        '500': {$ref: '#/components/responses/InternalError'}
+  /playlist/events:
+    get:
+      summary: Subscribe to best-effort playlist notifications
+      description: Events are item_added, item_removed, vote_changed, and playback_changed. They are published after commit and never include the whole playlist.
+      responses:
+        '200':
+          description: SSE stream
+          content: {text/event-stream: {schema: {type: string}, example: "event: vote_changed\ndata: {\"itemId\":15}\n\n"}}
+components:
+  parameters:
+    ItemID: {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+  requestBodies:
+    PlaybackRequest: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/PlaybackRequest'}, example: {expectedVersion: 1}}}}
+  responses:
+    InvalidRequest: {description: Invalid JSON or invalid field, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    InvalidVote: {description: Vote must be -1 or 1, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    UserNotFound: {description: User does not exist, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    ItemNotFound: {description: Item does not exist, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    ItemNotQueued: {description: Item is not queued, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    AccessDenied: {description: Only item author may remove it, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+    InternalError: {description: Unexpected server error, content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  schemas:
+    CreateUserRequest: {type: object, additionalProperties: false, required: [name], properties: {name: {type: string, minLength: 1}}}
+    UserReference: {type: object, additionalProperties: false, required: [userId], properties: {userId: {type: integer, format: int64, minimum: 1}}}
+    CreateItemRequest:
+      type: object
+      additionalProperties: false
+      required: [userId, title, artist]
+      properties:
+        userId: {type: integer, format: int64, minimum: 1}
+        title: {type: string, minLength: 1}
+        artist: {type: string, minLength: 1}
+        url: {type: [string, 'null']}
+    VoteRequest: {type: object, additionalProperties: false, required: [userId, value], properties: {userId: {type: integer, format: int64, minimum: 1}, value: {type: integer, enum: [-1, 1]}}}
+    PlaybackRequest: {type: object, additionalProperties: false, required: [expectedVersion], properties: {expectedVersion: {type: integer, format: int64, minimum: 1}}}
+    User: {type: object, required: [id, name], properties: {id: {type: integer, format: int64}, name: {type: string}}}
+    PlaylistItem:
+      type: object
+      required: [id, title, artist, status, score, createdAt]
+      properties:
+        id: {type: integer, format: int64}
+        title: {type: string}
+        artist: {type: string}
+        url: {type: string}
+        status: {type: string, enum: [queued, playing, played, removed]}
+        score: {type: integer, format: int64}
+        createdAt: {type: string, format: date-time}
+        startedAt: {type: string, format: date-time}
+        playedAt: {type: string, format: date-time}
+    PlaylistSnapshot:
+      type: object
+      required: [playing, queue, playbackVersion]
+      properties:
+        playing: {oneOf: [{$ref: '#/components/schemas/PlaylistItem'}, {type: 'null'}]}
+        queue: {type: array, items: {$ref: '#/components/schemas/PlaylistItem'}}
+        playbackVersion: {type: integer, format: int64, minimum: 1}
+    VoteResult: {type: object, required: [itemId, userId, score], properties: {itemId: {type: integer, format: int64}, userId: {type: integer, format: int64}, value: {type: integer, enum: [-1, 1]}, score: {type: integer, format: int64}}}
+    Error: {type: object, required: [error], properties: {error: {type: object, required: [code, message], properties: {code: {type: string}, message: {type: string}}}}}

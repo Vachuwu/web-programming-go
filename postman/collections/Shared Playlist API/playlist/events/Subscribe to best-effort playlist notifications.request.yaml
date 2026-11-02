@@ -1,0 +1,12 @@
+$kind: http-request
+description: Events are item_added, item_removed, vote_changed, and playback_changed. They are published after commit and never include the whole playlist.
+url: "{{baseUrl}}/playlist/events"
+method: GET
+headers:
+  Accept: text/event-stream
+body:
+  type: text
+  content: ""
+settings: {}
+examples: ./.resources/Subscribe to best-effort playlist notifications.resources/examples
+order: 1000

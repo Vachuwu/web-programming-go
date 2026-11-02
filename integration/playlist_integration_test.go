@@ -39,10 +39,10 @@ func TestMain(m *testing.M) {
 
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
-			Image:         "postgres:16-alpine",
-			ExposedPorts:  []string{"5432/tcp"},
-			Env:           map[string]string{"POSTGRES_USER": "playlist", "POSTGRES_PASSWORD": "playlist", "POSTGRES_DB": "playlist"},
-			WaitingFor:    wait.ForLog("database system is ready to accept connections").WithOccurrence(2),
+			Image:           "postgres:16-alpine",
+			ExposedPorts:    []string{"5432/tcp"},
+			Env:             map[string]string{"POSTGRES_USER": "playlist", "POSTGRES_PASSWORD": "playlist", "POSTGRES_DB": "playlist"},
+			WaitingFor:      wait.ForLog("database system is ready to accept connections").WithOccurrence(2),
 			AlwaysPullImage: false,
 		},
 		Started: true,
@@ -472,7 +472,27 @@ func TestSSEPublishesOnlyCommittedChanges(t *testing.T) {
 		}
 		close(eventsReceived)
 	}()
+	secondRequest, err := http.NewRequest(http.MethodGet, app.server.URL+"/playlist/events", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondResponse, err := app.server.Client().Do(secondRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer secondResponse.Body.Close()
+	secondEvents := make(chan string, 2)
+	go func() {
+		scanner := bufio.NewScanner(secondResponse.Body)
+		for scanner.Scan() {
+			if line := scanner.Text(); strings.HasPrefix(line, "event: ") {
+				secondEvents <- strings.TrimPrefix(line, "event: ")
+			}
+		}
+		close(secondEvents)
+	}()
 	owner := app.user(t, "owner")
+	item := app.item(t, owner.ID, "track")
 	select {
 	case name := <-eventsReceived:
 		if name != "item_added" {
@@ -481,9 +501,16 @@ func TestSSEPublishesOnlyCommittedChanges(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("no SSE event after committed item")
 	}
+	select {
+	case name := <-secondEvents:
+		if name != "item_added" {
+			t.Fatalf("second subscriber event = %q, want item_added", name)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("second subscriber did not receive the committed event")
+	}
+	secondResponse.Body.Close()
 	var result domain.VoteResult
-	item := app.item(t, owner.ID, "track")
-	<-eventsReceived
 	if status := app.api(t, http.MethodPost, fmt.Sprintf("/playlist/items/%d/vote", item.ID), map[string]any{"userId": owner.ID, "value": 1}, &result); status != http.StatusOK {
 		t.Fatalf("vote status = %d", status)
 	}

@@ -1,0 +1,49 @@
+$kind: http-request
+description: ""
+url: "{{baseUrl}}/playlist/items/:id"
+method: DELETE
+headers:
+  Content-Type: application/json
+  Accept: application/json
+pathVariables:
+  - key: id
+    value: "5872"
+    disabled: false
+    description: ""
+    $type: |-
+      {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "value"
+        ]
+      }
+body:
+  type: json
+  content: |-
+    {
+      "userId": 3980
+    }
+  $type: |-
+    {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "integer",
+          "minimum": 1,
+          "format": "int64"
+        }
+      },
+      "required": [
+        "userId"
+      ]
+    }
+settings: {}
+examples: ./.resources/Soft-delete a queued track added by this user.resources/examples
+order: 1000

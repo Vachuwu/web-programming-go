@@ -1,0 +1,49 @@
+$kind: http-request
+description: ""
+url: "{{baseUrl}}/playlist/items"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "userId": 1,
+      "title": "The Pot",
+      "artist": "Tool",
+      "url": "https://example.com/song"
+    }
+  $type: |-
+    {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "integer",
+          "minimum": 1,
+          "format": "int64"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artist": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "userId",
+        "title",
+        "artist"
+      ]
+    }
+settings: {}
+examples: ./.resources/Add a queued track.resources/examples
+order: 1000

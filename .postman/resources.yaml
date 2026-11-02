@@ -1,0 +1,9 @@
+workspace:
+  id: 3a0cbfb9-604d-4732-8f08-40f1e7c5020e
+localResources:
+  specs:
+    - ../docs/openapi.yaml
+    - ../postman/specs/Shared Playlist API/openapi.yaml
+resourceNameMappings:
+  specs:
+    - ../postman/specs/Shared Playlist API/openapi.yaml: Shared Playlist API

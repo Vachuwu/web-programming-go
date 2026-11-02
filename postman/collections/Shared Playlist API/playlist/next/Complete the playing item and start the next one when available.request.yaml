@@ -1,0 +1,30 @@
+$kind: http-request
+description: ""
+url: "{{baseUrl}}/playlist/next"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "expectedVersion": 1
+    }
+  $type: |-
+    {
+      "type": "object",
+      "properties": {
+        "expectedVersion": {
+          "type": "integer",
+          "minimum": 1,
+          "format": "int64"
+        }
+      },
+      "required": [
+        "expectedVersion"
+      ]
+    }
+settings: {}
+examples: ./.resources/Complete the playing item and start the next one when available.resources/examples
+order: 1000

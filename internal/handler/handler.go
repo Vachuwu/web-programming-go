@@ -1,4 +1,4 @@
-// Package handler translates HTTP requests into service calls.
+
 package handler
 
 import (
@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	apidocs "playlist/docs"
 	"playlist/internal/domain"
 	"playlist/internal/events"
 	"playlist/internal/service"
@@ -52,7 +53,27 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /playlist/next", h.next)
 	mux.HandleFunc("GET /playlist/history", h.getPlaylistHistory)
 	mux.HandleFunc("POST /users", h.createUser)
+	mux.HandleFunc("GET /docs/", serveSwaggerUI)
+	mux.HandleFunc("GET /docs/openapi.yaml", serveOpenAPI)
 	return mux
+}
+
+func serveOpenAPI(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/yaml; charset=utf-8")
+	_, _ = w.Write(apidocs.OpenAPI)
+}
+
+func serveSwaggerUI(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/docs/" {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = fmt.Fprint(w, `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Playlist API</title>
+<link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css"></head>
+<body><div id="swagger-ui"></div><script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+<script>SwaggerUIBundle({url:'/docs/openapi.yaml',dom_id:'#swagger-ui',persistAuthorization:true});</script></body></html>`)
 }
 
 type createUserRequest struct {

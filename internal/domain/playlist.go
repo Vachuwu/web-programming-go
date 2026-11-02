@@ -33,9 +33,9 @@ type PlaylistSnapshot struct {
 // VoteResult is the current aggregate state returned after a vote operation.
 // Value is omitted when a vote was deleted.
 type VoteResult struct {
-	ItemID int64  `json:"itemId"`
-	UserID int64  `json:"userId"`
-	Value  *int16 `json:"value,omitempty"`
-	Score  int64  `json:"score"`
-	Changed bool  `json:"-"`
+	ItemID  int64  `json:"itemId"`
+	UserID  int64  `json:"userId"`
+	Value   *int16 `json:"value,omitempty"`
+	Score   int64  `json:"score"`
+	Changed bool   `json:"-"`
 }

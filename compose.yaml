@@ -17,7 +17,6 @@ services:
 
   migrate:
     image: migrate/migrate:v4.18.3
-    profiles: ["tools"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -30,5 +29,50 @@ services:
       - postgres://${POSTGRES_USER:-playlist}:${POSTGRES_PASSWORD:-playlist}@postgres:5432/${POSTGRES_DB:-playlist}?sslmode=disable
       - up
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SERVER_PORT: "8080"
+      DATABASE_URL: postgres://${POSTGRES_USER:-playlist}:${POSTGRES_PASSWORD:-playlist}@postgres:5432/${POSTGRES_DB:-playlist}?sslmode=disable
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-10}
+      HTTP_TIMEOUT: ${HTTP_TIMEOUT:-5s}
+      DB_OPERATION_TIMEOUT: ${DB_OPERATION_TIMEOUT:-3s}
+      DB_CONNECT_TIMEOUT: ${DB_CONNECT_TIMEOUT:-10s}
+      SHUTDOWN_TIMEOUT: ${SHUTDOWN_TIMEOUT:-10s}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  loadtest:
+    build:
+      context: .
+      target: build
+    profiles: ["tools"]
+    depends_on:
+      app:
+        condition: service_started
+    entrypoint: ["go", "run", "./cmd/loadtest", "-base-url=http://app:8080", "-state=/state/loadtest-state.json"]
+    volumes:
+      - loadtest_state:/state
+
+  test:
+    build:
+      context: .
+      target: build
+    profiles: ["tools"]
+    entrypoint: ["go", "test"]
+    command: ["./..."]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
 volumes:
   postgres_data:
+  loadtest_state:
