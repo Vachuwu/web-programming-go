@@ -1,0 +1,52 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/playlist/items/:id/vote?userId=5872"
+  method: DELETE
+  headers:
+    Accept: application/json
+  queryParams:
+    userId: "5872"
+  pathVariables:
+    id: "5872"
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 400
+  statusText: Bad Request
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "error": {
+          "code": "string",
+          "message": "string"
+        }
+      }
+    $type: |-
+      {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      }
+order: 2000

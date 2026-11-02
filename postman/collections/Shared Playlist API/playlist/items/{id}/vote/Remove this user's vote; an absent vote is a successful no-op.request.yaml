@@ -1,0 +1,50 @@
+$kind: http-request
+description: ""
+url: "{{baseUrl}}/playlist/items/:id/vote?userId=5872"
+method: DELETE
+headers:
+  Accept: application/json
+queryParams:
+  - key: userId
+    value: "5872"
+    disabled: false
+    description: ""
+    $type: |-
+      {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "value"
+        ]
+      }
+pathVariables:
+  - key: id
+    value: "5872"
+    disabled: false
+    description: ""
+    $type: |-
+      {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "value"
+        ]
+      }
+body:
+  type: text
+  content: ""
+settings: {}
+examples: ./.resources/Remove this user's vote; an absent vote is a successful no-op.resources/examples
+order: 2000

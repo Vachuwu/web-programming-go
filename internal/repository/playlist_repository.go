@@ -15,23 +15,21 @@ import (
 )
 
 var (
-	ErrUserNotFound    = errors.New("user not found")
-	ErrItemNotFound    = errors.New("playlist item not found")
-	ErrItemNotQueued   = errors.New("playlist item is not queued")
+	ErrUserNotFound     = errors.New("user not found")
+	ErrItemNotFound     = errors.New("playlist item not found")
+	ErrItemNotQueued    = errors.New("playlist item is not queued")
 	ErrItemAccessDenied = errors.New("playlist item access denied")
-	ErrVersionConflict = errors.New("playback version conflict")
-	ErrAlreadyPlaying  = errors.New("playlist already has a playing item")
-	ErrPlaylistEmpty   = errors.New("playlist queue is empty")
-	ErrNothingPlaying  = errors.New("playlist has no playing item")
+	ErrVersionConflict  = errors.New("playback version conflict")
+	ErrAlreadyPlaying   = errors.New("playlist already has a playing item")
+	ErrPlaylistEmpty    = errors.New("playlist queue is empty")
+	ErrNothingPlaying   = errors.New("playlist has no playing item")
 )
 
 type PlaylistRepository struct {
 	pool *pgxpool.Pool
 }
 
-// PlaylistTransaction represents a write operation that holds the shared
-// playlist_state row lock. It is intentionally created only by
-// WithPlaylistLock so every playlist mutation follows the same rule.
+
 type PlaylistTransaction struct {
 	tx              pgx.Tx
 	playbackVersion int64
@@ -41,9 +39,7 @@ func NewPlaylistRepository(pool *pgxpool.Pool) *PlaylistRepository {
 	return &PlaylistRepository{pool: pool}
 }
 
-// WithPlaylistLock serializes a playlist-changing operation with all other
-// changes. The lock is acquired before the callback performs its reads or
-// writes and is released only after a successful commit (or rollback).
+
 func (r *PlaylistRepository) WithPlaylistLock(ctx context.Context, operation func(*PlaylistTransaction) error) error {
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
@@ -67,9 +63,7 @@ func (r *PlaylistRepository) WithPlaylistLock(ctx context.Context, operation fun
 	return nil
 }
 
-// PlaybackVersion returns the version read while acquiring playlist_state's
-// row lock. It is safe to compare it with an expected client version inside
-// the locked transaction.
+
 func (tx *PlaylistTransaction) PlaybackVersion() int64 {
 	return tx.playbackVersion
 }
@@ -117,8 +111,7 @@ func (r *PlaylistRepository) History(ctx context.Context) ([]domain.PlaylistItem
 	return r.itemsByStatus(ctx, domain.StatusPlayed, "p.played_at DESC, p.id DESC")
 }
 
-// Play starts the highest-priority queued item. The caller must hold the
-// shared playlist lock through WithPlaylistLock.
+
 func (tx *PlaylistTransaction) Play(ctx context.Context, expectedVersion int64) (domain.PlaylistSnapshot, error) {
 	if expectedVersion != tx.playbackVersion {
 		return domain.PlaylistSnapshot{}, ErrVersionConflict
@@ -145,8 +138,7 @@ func (tx *PlaylistTransaction) Play(ctx context.Context, expectedVersion int64) 
 	return tx.incrementVersionAndSnapshot(ctx)
 }
 
-// Next completes the current item and starts the best queued replacement, if
-// one exists. The caller must hold the shared playlist lock.
+
 func (tx *PlaylistTransaction) Next(ctx context.Context, expectedVersion int64) (domain.PlaylistSnapshot, error) {
 	if expectedVersion != tx.playbackVersion {
 		return domain.PlaylistSnapshot{}, ErrVersionConflict
@@ -227,7 +219,7 @@ func (tx *PlaylistTransaction) bestQueued(ctx context.Context) (*domain.Playlist
 	const query = `
 		SELECT p.id, p.title, p.artist, p.url, p.added_by, p.status,
 			p.created_at, p.started_at, p.played_at,
-			COALESCE(SUM(v.value), 0)::bigint
+			COALESCE(SUM(v.value), 0)::bigint AS score
 		FROM playlist_items AS p
 		LEFT JOIN votes AS v ON v.item_id = p.id
 		WHERE p.status = 'queued'
@@ -427,7 +419,7 @@ func itemsByStatus(ctx context.Context, queryer playlistQueryer, status domain.I
 	query := `
 		SELECT p.id, p.title, p.artist, p.url, p.added_by, p.status,
 			p.created_at, p.started_at, p.played_at,
-			COALESCE(SUM(v.value), 0)::bigint
+			COALESCE(SUM(v.value), 0)::bigint AS score
 		FROM playlist_items AS p
 		LEFT JOIN votes AS v ON v.item_id = p.id
 		WHERE p.status = $1

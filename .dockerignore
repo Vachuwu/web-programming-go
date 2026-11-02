@@ -1,0 +1,9 @@
+.git
+.idea
+.env
+bin
+coverage.out
+loadtest-state.json
+.cache
+.postman/
+postman/

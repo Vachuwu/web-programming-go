@@ -1,0 +1,30 @@
+$kind: http-request
+description: ""
+url: "{{baseUrl}}/playlist/play"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "expectedVersion": 1
+    }
+  $type: |-
+    {
+      "type": "object",
+      "properties": {
+        "expectedVersion": {
+          "type": "integer",
+          "minimum": 1,
+          "format": "int64"
+        }
+      },
+      "required": [
+        "expectedVersion"
+      ]
+    }
+settings: {}
+examples: ./.resources/Start the highest-ranked queued item.resources/examples
+order: 1000

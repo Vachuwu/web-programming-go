@@ -2,32 +2,78 @@
 package config
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	HTTPAddress string
-	DatabaseURL string
+	HTTPAddress        string
+	DatabaseURL        string
+	LogLevel           string
+	DBMaxConnections   int32
+	HTTPTimeout        time.Duration
+	DBOperationTimeout time.Duration
+	DBConnectTimeout   time.Duration
+	ShutdownTimeout    time.Duration
 }
 
 // Load reads .env when it exists. A real system environment variable always
 // takes precedence over a value from that file.
 func Load() (Config, error) {
-	fileValues, err := readDotEnv(".env")
+	fileValues, err := godotenv.Read(".env")
+	if errors.Is(err, os.ErrNotExist) {
+		fileValues = map[string]string{}
+		err = nil
+	}
 	if err != nil {
 		return Config{}, err
 	}
 
-	config := Config{
-		HTTPAddress: value("HTTP_ADDR", fileValues),
-		DatabaseURL: value("DATABASE_URL", fileValues),
+	port := value("SERVER_PORT", fileValues)
+	if port == "" {
+		// HTTP_ADDR is retained solely for compatibility with earlier stages.
+		port = strings.TrimPrefix(value("HTTP_ADDR", fileValues), ":")
 	}
-	if config.HTTPAddress == "" {
-		config.HTTPAddress = ":8080"
+	if port == "" {
+		port = "8080"
+	}
+	maxConnections, err := positiveInt32("DB_MAX_CONNECTIONS", value("DB_MAX_CONNECTIONS", fileValues), 10)
+	if err != nil {
+		return Config{}, err
+	}
+	httpTimeout, err := duration("HTTP_TIMEOUT", value("HTTP_TIMEOUT", fileValues), 5*time.Second)
+	if err != nil {
+		return Config{}, err
+	}
+	dbOperationTimeout, err := duration("DB_OPERATION_TIMEOUT", value("DB_OPERATION_TIMEOUT", fileValues), 3*time.Second)
+	if err != nil {
+		return Config{}, err
+	}
+	dbConnectTimeout, err := duration("DB_CONNECT_TIMEOUT", value("DB_CONNECT_TIMEOUT", fileValues), 10*time.Second)
+	if err != nil {
+		return Config{}, err
+	}
+	shutdownTimeout, err := duration("SHUTDOWN_TIMEOUT", value("SHUTDOWN_TIMEOUT", fileValues), 10*time.Second)
+	if err != nil {
+		return Config{}, err
+	}
+	config := Config{
+		HTTPAddress:        ":" + port,
+		DatabaseURL:        value("DATABASE_URL", fileValues),
+		LogLevel:           value("LOG_LEVEL", fileValues),
+		DBMaxConnections:   maxConnections,
+		HTTPTimeout:        httpTimeout,
+		DBOperationTimeout: dbOperationTimeout,
+		DBConnectTimeout:   dbConnectTimeout,
+		ShutdownTimeout:    shutdownTimeout,
+	}
+	if config.LogLevel == "" {
+		config.LogLevel = "info"
 	}
 	if config.DatabaseURL == "" {
 		return Config{}, errors.New("DATABASE_URL is required")
@@ -42,33 +88,24 @@ func value(key string, fileValues map[string]string) string {
 	return fileValues[key]
 }
 
-func readDotEnv(path string) (map[string]string, error) {
-	file, err := os.Open(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return map[string]string{}, nil
+func positiveInt32(name, raw string, fallback int32) (int32, error) {
+	if raw == "" {
+		return fallback, nil
 	}
-	if err != nil {
-		return nil, fmt.Errorf("open %s: %w", path, err)
+	var value int32
+	if _, err := fmt.Sscan(raw, &value); err != nil || value <= 0 {
+		return 0, fmt.Errorf("%s must be a positive integer", name)
 	}
-	defer file.Close()
+	return value, nil
+}
 
-	values := make(map[string]string)
-	scanner := bufio.NewScanner(file)
-	for lineNumber := 1; scanner.Scan(); lineNumber++ {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		key, value, found := strings.Cut(line, "=")
-		key = strings.TrimSpace(key)
-		if !found || key == "" {
-			return nil, fmt.Errorf("invalid .env line %d", lineNumber)
-		}
-		values[key] = strings.Trim(strings.TrimSpace(value), "\"")
+func duration(name, raw string, fallback time.Duration) (time.Duration, error) {
+	if raw == "" {
+		return fallback, nil
 	}
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("read %s: %w", path, err)
+	value, err := time.ParseDuration(raw)
+	if err != nil || value <= 0 {
+		return 0, fmt.Errorf("%s must be a positive duration", name)
 	}
-	return values, nil
+	return value, nil
 }

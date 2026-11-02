@@ -1,0 +1,61 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/playlist/items/:id/vote"
+  method: POST
+  headers:
+    Content-Type: application/json
+    Accept: application/json
+  pathVariables:
+    id: "5872"
+  body:
+    type: json
+    content: |-
+      {
+        "userId": 1,
+        "value": 1
+      }
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "itemId": 1729,
+        "userId": 6951,
+        "score": 2279,
+        "value": 1
+      }
+    $type: |-
+      {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "value": {
+            "type": "integer",
+            "enum": [
+              -1,
+              1
+            ]
+          },
+          "score": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "itemId",
+          "userId",
+          "score"
+        ]
+      }
+order: 1000

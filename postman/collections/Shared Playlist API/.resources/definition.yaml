@@ -1,0 +1,4 @@
+$kind: collection
+description: One shared playlist backed by PostgreSQL. SSE is best-effort; fetch GET /playlist after notifications.
+variables:
+  baseUrl: http://localhost:8080

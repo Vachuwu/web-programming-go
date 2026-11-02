@@ -1,0 +1,88 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/playlist/items"
+  method: POST
+  headers:
+    Content-Type: application/json
+    Accept: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "userId": 1,
+        "title": "The Pot",
+        "artist": "Tool",
+        "url": "https://example.com/song"
+      }
+response:
+  statusCode: 201
+  statusText: Created
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "id": 400,
+        "title": "string",
+        "artist": "string",
+        "status": "playing",
+        "score": 5620,
+        "createdAt": "1990-07-01T13:29:12.897Z",
+        "url": "string",
+        "startedAt": "1947-03-27T17:16:56.945Z",
+        "playedAt": "1979-09-05T15:42:31.095Z"
+      }
+    $type: |-
+      {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          },
+          "artist": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "playing",
+              "played",
+              "removed"
+            ]
+          },
+          "score": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "playedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "artist",
+          "status",
+          "score",
+          "createdAt"
+        ]
+      }
+order: 1000

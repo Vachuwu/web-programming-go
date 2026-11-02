@@ -1,0 +1,29 @@
+$kind: http-request
+description: ""
+url: "{{baseUrl}}/users"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "name": "Max"
+    }
+  $type: |-
+    {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "name"
+      ]
+    }
+settings: {}
+examples: ./.resources/Create a user.resources/examples
+order: 1000

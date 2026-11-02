@@ -2,4 +2,5 @@
 .idea/
 bin/
 coverage.out
-docs/
+loadtest-state.json
+.cache/
